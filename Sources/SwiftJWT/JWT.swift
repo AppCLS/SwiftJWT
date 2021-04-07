@@ -41,15 +41,12 @@ public struct JWT<T: Claims>: Codable {
     /// The JWT claims
     public var claims: T
     
-    private let decoder: JSONDecoder
-    
     /// Initialize a `JWT` instance from a `Header` and `Claims`.
     ///
     /// - Parameter header: A JSON Web Token header object.
     /// - Parameter claims: A JSON Web Token claims object.
     /// - Returns: A new instance of `JWT`.
-    public init(header: Header = Header(), claims: T, decoder: JSONDecoder = JSONDecoder()) {
-        self.decoder = decoder
+    public init(header: Header = Header(), claims: T) {
         self.header = header
         self.claims = claims
     }
@@ -66,8 +63,6 @@ public struct JWT<T: Claims>: Codable {
     /// - Throws: `JWTError.failedVerification` if the verifier fails to verify the jwtString.
     /// - Throws: A DecodingError if the JSONDecoder throws an error while decoding the JWT.
     public init(jwtString: String, verifier: JWTVerifier = .none, decoder: JSONDecoder = JSONDecoder()) throws {
-        self.decoder = decoder
-        
         let components = jwtString.components(separatedBy: ".")
         guard components.count == 2 || components.count == 3,
             let headerData = JWTDecoder.data(base64urlEncoded: components[0]),
@@ -80,8 +75,8 @@ public struct JWT<T: Claims>: Codable {
         }
         
         decoder.dateDecodingStrategy = .secondsSince1970
-        let header = try jsonDecoder.decode(Header.self, from: headerData)
-        let claims = try jsonDecoder.decode(T.self, from: claimsData)
+        let header = try decoder.decode(Header.self, from: headerData)
+        let claims = try decoder.decode(T.self, from: claimsData)
         self.header = header
         self.claims = claims
     }
@@ -119,7 +114,7 @@ public struct JWT<T: Claims>: Codable {
     ///
     /// - Parameter leeway: The time in seconds that the JWT can be invalid but still accepted to account for clock differences.
     /// - Returns: A value of `ValidateClaimsResult`.
-    public func validateClaims(leeway: TimeInterval = 0) -> ValidateClaimsResult {        
+    public func validateClaims(leeway: TimeInterval = 0) -> ValidateClaimsResult {
         if let expirationDate = claims.exp {
             if expirationDate + leeway < Date() {
                 return .expired
