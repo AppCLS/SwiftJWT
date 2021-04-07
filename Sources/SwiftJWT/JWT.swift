@@ -41,12 +41,15 @@ public struct JWT<T: Claims>: Codable {
     /// The JWT claims
     public var claims: T
     
+    private let decoder: JSONDecoder
+    
     /// Initialize a `JWT` instance from a `Header` and `Claims`.
     ///
     /// - Parameter header: A JSON Web Token header object.
     /// - Parameter claims: A JSON Web Token claims object.
     /// - Returns: A new instance of `JWT`.
-    public init(header: Header = Header(), claims: T) {
+    public init(header: Header = Header(), claims: T, decoder: JSONDecoder = JSONDecoder()) {
+        self.decoder = decoder
         self.header = header
         self.claims = claims
     }
@@ -62,7 +65,7 @@ public struct JWT<T: Claims>: Codable {
     /// - Throws: `JWTError.invalidJWTString` if the provided String is not in the form mandated by the JWT specification.
     /// - Throws: `JWTError.failedVerification` if the verifier fails to verify the jwtString.
     /// - Throws: A DecodingError if the JSONDecoder throws an error while decoding the JWT.
-    public init(jwtString: String, verifier: JWTVerifier = .none ) throws {
+    public init(jwtString: String, verifier: JWTVerifier = .none) throws {
         let components = jwtString.components(separatedBy: ".")
         guard components.count == 2 || components.count == 3,
             let headerData = JWTDecoder.data(base64urlEncoded: components[0]),
@@ -73,7 +76,7 @@ public struct JWT<T: Claims>: Codable {
         guard JWT.verify(jwtString, using: verifier) else {
             throw JWTError.failedVerification
         }
-        let jsonDecoder = JSONDecoder()
+        let jsonDecoder = self.decoder
         jsonDecoder.dateDecodingStrategy = .secondsSince1970
         let header = try jsonDecoder.decode(Header.self, from: headerData)
         let claims = try jsonDecoder.decode(T.self, from: claimsData)
