@@ -65,7 +65,9 @@ public struct JWT<T: Claims>: Codable {
     /// - Throws: `JWTError.invalidJWTString` if the provided String is not in the form mandated by the JWT specification.
     /// - Throws: `JWTError.failedVerification` if the verifier fails to verify the jwtString.
     /// - Throws: A DecodingError if the JSONDecoder throws an error while decoding the JWT.
-    public init(jwtString: String, verifier: JWTVerifier = .none) throws {
+    public init(jwtString: String, verifier: JWTVerifier = .none, decoder: JSONDecoder = JSONDecoder()) throws {
+        self.decoder = decoder
+        
         let components = jwtString.components(separatedBy: ".")
         guard components.count == 2 || components.count == 3,
             let headerData = JWTDecoder.data(base64urlEncoded: components[0]),
@@ -76,8 +78,8 @@ public struct JWT<T: Claims>: Codable {
         guard JWT.verify(jwtString, using: verifier) else {
             throw JWTError.failedVerification
         }
-        let jsonDecoder = self.decoder
-        jsonDecoder.dateDecodingStrategy = .secondsSince1970
+        
+        decoder.dateDecodingStrategy = .secondsSince1970
         let header = try jsonDecoder.decode(Header.self, from: headerData)
         let claims = try jsonDecoder.decode(T.self, from: claimsData)
         self.header = header
